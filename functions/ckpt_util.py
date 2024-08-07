@@ -1,6 +1,10 @@
-import os, hashlib
+import hashlib
+import os
+
 import requests
+
 from tqdm import tqdm
+
 
 URL_MAP = {
     "cifar10": "https://heibox.uni-heidelberg.de/f/869980b53bf5416c8a28/?dl=1",
@@ -53,20 +57,21 @@ def md5_hash(path):
 
 
 def get_ckpt_path(name, root=None, check=False):
-    if 'church_outdoor' in name:
-        name = name.replace('church_outdoor', 'church')
+    if "church_outdoor" in name:
+        name = name.replace("church_outdoor", "church")
     assert name in URL_MAP
     # Modify the path when necessary
-    cachedir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("/atlas/u/tsong/.cache"))
-    root = (
-        root
-        if root is not None
-        else os.path.join(cachedir, "diffusion_models_converted")
-    )
+    cachedir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("/home/yuegao/.cache"))
+    root = root if root is not None else os.path.join(cachedir, "diffusion_models_converted")
     path = os.path.join(root, CKPT_MAP[name])
     if not os.path.exists(path) or (check and not md5_hash(path) == MD5_MAP[name]):
-        print("Downloading {} model from {} to {}".format(name, URL_MAP[name], path))
+        print(f"Downloading {name} model from {URL_MAP[name]} to {path}")
         download(URL_MAP[name], path)
         md5 = md5_hash(path)
         assert md5 == MD5_MAP[name], md5
     return path
+
+
+if __name__ == "__main__":
+    for name in URL_MAP:
+        get_ckpt_path(name, check=True)

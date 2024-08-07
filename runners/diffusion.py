@@ -1,21 +1,20 @@
-import os
-import logging
-import time
 import glob
+import logging
+import os
+import time
 
 import numpy as np
-import tqdm
 import torch
 import torch.utils.data as data
+import torchvision.utils as tvu
+import tqdm
 
+from datasets import data_transform, get_dataset, inverse_data_transform
+from functions import get_optimizer
+from functions.ckpt_util import get_ckpt_path
+from functions.losses import loss_registry
 from models.diffusion import Model
 from models.ema import EMAHelper
-from functions import get_optimizer
-from functions.losses import loss_registry
-from datasets import get_dataset, data_transform, inverse_data_transform
-from functions.ckpt_util import get_ckpt_path
-
-import torchvision.utils as tvu
 
 
 def torch2hwcuint8(x, clip=False):
@@ -32,23 +31,19 @@ def get_beta_schedule(beta_schedule, *, beta_start, beta_end, num_diffusion_time
     if beta_schedule == "quad":
         betas = (
             np.linspace(
-                beta_start ** 0.5,
-                beta_end ** 0.5,
+                beta_start**0.5,
+                beta_end**0.5,
                 num_diffusion_timesteps,
                 dtype=np.float64,
             )
             ** 2
         )
     elif beta_schedule == "linear":
-        betas = np.linspace(
-            beta_start, beta_end, num_diffusion_timesteps, dtype=np.float64
-        )
+        betas = np.linspace(beta_start, beta_end, num_diffusion_timesteps, dtype=np.float64)
     elif beta_schedule == "const":
         betas = beta_end * np.ones(num_diffusion_timesteps, dtype=np.float64)
     elif beta_schedule == "jsd":  # 1/T, 1/(T-1), 1/(T-2), ..., 1
-        betas = 1.0 / np.linspace(
-            num_diffusion_timesteps, 1, num_diffusion_timesteps, dtype=np.float64
-        )
+        betas = 1.0 / np.linspace(num_diffusion_timesteps, 1, num_diffusion_timesteps, dtype=np.float64)
     elif beta_schedule == "sigmoid":
         betas = np.linspace(-6, 6, num_diffusion_timesteps)
         betas = sigmoid(betas) * (beta_end - beta_start) + beta_start
@@ -63,11 +58,7 @@ class Diffusion(object):
         self.args = args
         self.config = config
         if device is None:
-            device = (
-                torch.device("cuda")
-                if torch.cuda.is_available()
-                else torch.device("cpu")
-            )
+            device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.device = device
 
         self.model_var_type = config.model.var_type
@@ -82,12 +73,8 @@ class Diffusion(object):
 
         alphas = 1.0 - betas
         alphas_cumprod = alphas.cumprod(dim=0)
-        alphas_cumprod_prev = torch.cat(
-            [torch.ones(1).to(device), alphas_cumprod[:-1]], dim=0
-        )
-        posterior_variance = (
-            betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
-        )
+        alphas_cumprod_prev = torch.cat([torch.ones(1).to(device), alphas_cumprod[:-1]], dim=0)
+        posterior_variance = betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
             # torch.cat(
@@ -145,25 +132,19 @@ class Diffusion(object):
                 b = self.betas
 
                 # antithetic sampling
-                t = torch.randint(
-                    low=0, high=self.num_timesteps, size=(n // 2 + 1,)
-                ).to(self.device)
+                t = torch.randint(low=0, high=self.num_timesteps, size=(n // 2 + 1,)).to(self.device)
                 t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]
                 loss = loss_registry[config.model.type](model, x, t, e, b)
 
                 tb_logger.add_scalar("loss", loss, global_step=step)
 
-                logging.info(
-                    f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}"
-                )
+                logging.info(f"step: {step}, loss: {loss.item()}, data time: {data_time / (i+1)}")
 
                 optimizer.zero_grad()
                 loss.backward()
 
                 try:
-                    torch.nn.utils.clip_grad_norm_(
-                        model.parameters(), config.optim.grad_clip
-                    )
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), config.optim.grad_clip)
                 except Exception:
                     pass
                 optimizer.step()
@@ -200,9 +181,7 @@ class Diffusion(object):
                 )
             else:
                 states = torch.load(
-                    os.path.join(
-                        self.args.log_path, f"ckpt_{self.config.sampling.ckpt_id}.pth"
-                    ),
+                    os.path.join(self.args.log_path, f"ckpt_{self.config.sampling.ckpt_id}.pth"),
                     map_location=self.config.device,
                 )
             model = model.to(self.device)
@@ -249,9 +228,7 @@ class Diffusion(object):
         n_rounds = (total_n_samples - img_id) // config.sampling.batch_size
 
         with torch.no_grad():
-            for _ in tqdm.tqdm(
-                range(n_rounds), desc="Generating image samples for FID evaluation."
-            ):
+            for _ in tqdm.tqdm(range(n_rounds), desc="Generating image samples for FID evaluation."):
                 n = config.sampling.batch_size
                 x = torch.randn(
                     n,
@@ -265,9 +242,7 @@ class Diffusion(object):
                 x = inverse_data_transform(config, x)
 
                 for i in range(n):
-                    tvu.save_image(
-                        x[i], os.path.join(self.args.image_folder, f"{img_id}.png")
-                    )
+                    tvu.save_image(x[i], os.path.join(self.args.image_folder, f"{img_id}.png"))
                     img_id += 1
 
     def sample_sequence(self, model):
@@ -289,9 +264,7 @@ class Diffusion(object):
 
         for i in range(len(x)):
             for j in range(x[i].size(0)):
-                tvu.save_image(
-                    x[i][j], os.path.join(self.args.image_folder, f"{j}_{i}.png")
-                )
+                tvu.save_image(x[i][j], os.path.join(self.args.image_folder, f"{j}_{i}.png"))
 
     def sample_interpolation(self, model):
         config = self.config
@@ -344,12 +317,7 @@ class Diffusion(object):
                 skip = self.num_timesteps // self.args.timesteps
                 seq = range(0, self.num_timesteps, skip)
             elif self.args.skip_type == "quad":
-                seq = (
-                    np.linspace(
-                        0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
-                    )
-                    ** 2
-                )
+                seq = np.linspace(0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps) ** 2
                 seq = [int(s) for s in list(seq)]
             else:
                 raise NotImplementedError
@@ -362,12 +330,7 @@ class Diffusion(object):
                 skip = self.num_timesteps // self.args.timesteps
                 seq = range(0, self.num_timesteps, skip)
             elif self.args.skip_type == "quad":
-                seq = (
-                    np.linspace(
-                        0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps
-                    )
-                    ** 2
-                )
+                seq = np.linspace(0, np.sqrt(self.num_timesteps * 0.8), self.args.timesteps) ** 2
                 seq = [int(s) for s in list(seq)]
             else:
                 raise NotImplementedError

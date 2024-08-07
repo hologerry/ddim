@@ -1,14 +1,17 @@
-import os
-import torch
 import numbers
+import os
+
+import numpy as np
+import torch
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
+
+from torch.utils.data import Subset
 from torchvision.datasets import CIFAR10
+
 from datasets.celeba import CelebA
 from datasets.ffhq import FFHQ
 from datasets.lsun import LSUN
-from torch.utils.data import Subset
-import numpy as np
 
 
 class Crop(object):
@@ -22,9 +25,7 @@ class Crop(object):
         return F.crop(img, self.x1, self.y1, self.x2 - self.x1, self.y2 - self.y1)
 
     def __repr__(self):
-        return self.__class__.__name__ + "(x1={}, x2={}, y1={}, y2={})".format(
-            self.x1, self.x2, self.y1, self.y2
-        )
+        return self.__class__.__name__ + "(x1={}, x2={}, y1={}, y2={})".format(self.x1, self.x2, self.y1, self.y2)
 
 
 def get_dataset(args, config):
@@ -40,9 +41,7 @@ def get_dataset(args, config):
                 transforms.ToTensor(),
             ]
         )
-        test_transform = transforms.Compose(
-            [transforms.Resize(config.data.image_size), transforms.ToTensor()]
-        )
+        test_transform = transforms.Compose([transforms.Resize(config.data.image_size), transforms.ToTensor()])
 
     if config.data.dataset == "CIFAR10":
         dataset = CIFAR10(
@@ -151,9 +150,7 @@ def get_dataset(args, config):
         if config.data.random_flip:
             dataset = FFHQ(
                 path=os.path.join(args.exp, "datasets", "FFHQ"),
-                transform=transforms.Compose(
-                    [transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor()]
-                ),
+                transform=transforms.Compose([transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor()]),
                 resolution=config.data.image_size,
             )
         else:

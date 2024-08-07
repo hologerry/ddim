@@ -1,20 +1,21 @@
-from .vision import VisionDataset
-from PIL import Image
+import io
 import os
 import os.path
-import io
-from collections.abc import Iterable
 import pickle
-from torchvision.datasets.utils import verify_str_arg, iterable_to_str
+
+from collections.abc import Iterable
+
+from PIL import Image
+from torchvision.datasets.utils import iterable_to_str, verify_str_arg
+
+from .vision import VisionDataset
 
 
 class LSUNClass(VisionDataset):
     def __init__(self, root, transform=None, target_transform=None):
         import lmdb
 
-        super(LSUNClass, self).__init__(
-            root, transform=transform, target_transform=target_transform
-        )
+        super(LSUNClass, self).__init__(root, transform=transform, target_transform=target_transform)
 
         self.env = lmdb.open(
             root,
@@ -73,17 +74,13 @@ class LSUN(VisionDataset):
     """
 
     def __init__(self, root, classes="train", transform=None, target_transform=None):
-        super(LSUN, self).__init__(
-            root, transform=transform, target_transform=target_transform
-        )
+        super(LSUN, self).__init__(root, transform=transform, target_transform=target_transform)
         self.classes = self._verify_classes(classes)
 
         # for each class, create an LSUNClassDataset
         self.dbs = []
         for c in self.classes:
-            self.dbs.append(
-                LSUNClass(root=root + "/" + c + "_lmdb", transform=transform)
-            )
+            self.dbs.append(LSUNClass(root=root + "/" + c + "_lmdb", transform=transform))
 
         self.indices = []
         count = 0
@@ -116,26 +113,18 @@ class LSUN(VisionDataset):
                 classes = [c + "_" + classes for c in categories]
         except ValueError:
             if not isinstance(classes, Iterable):
-                msg = (
-                    "Expected type str or Iterable for argument classes, "
-                    "but got type {}."
-                )
+                msg = "Expected type str or Iterable for argument classes, " "but got type {}."
                 raise ValueError(msg.format(type(classes)))
 
             classes = list(classes)
-            msg_fmtstr = (
-                "Expected type str for elements in argument classes, "
-                "but got type {}."
-            )
+            msg_fmtstr = "Expected type str for elements in argument classes, " "but got type {}."
             for c in classes:
                 verify_str_arg(c, custom_msg=msg_fmtstr.format(type(c)))
                 c_short = c.split("_")
                 category, dset_opt = "_".join(c_short[:-1]), c_short[-1]
 
                 msg_fmtstr = "Unknown value '{}' for {}. Valid values are {{{}}}."
-                msg = msg_fmtstr.format(
-                    category, "LSUN class", iterable_to_str(categories)
-                )
+                msg = msg_fmtstr.format(category, "LSUN class", iterable_to_str(categories))
                 verify_str_arg(category, valid_values=categories, custom_msg=msg)
 
                 msg = msg_fmtstr.format(dset_opt, "postfix", iterable_to_str(dset_opts))

@@ -1,15 +1,17 @@
 import argparse
-import traceback
-import shutil
 import logging
-import yaml
-import sys
 import os
-import torch
+import shutil
+import sys
+import traceback
+
 import numpy as np
+import torch
 import torch.utils.tensorboard as tb
+import yaml
 
 from runners.diffusion import Diffusion
+
 
 torch.set_printoptions(sci_mode=False)
 
@@ -17,23 +19,16 @@ torch.set_printoptions(sci_mode=False)
 def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()["__doc__"])
 
-    parser.add_argument(
-        "--config", type=str, required=True, help="Path to the config file"
-    )
+    parser.add_argument("--config", type=str, required=True, help="Path to the config file")
     parser.add_argument("--seed", type=int, default=1234, help="Random seed")
-    parser.add_argument(
-        "--exp", type=str, default="exp", help="Path for saving running related data."
-    )
+    parser.add_argument("--exp", type=str, default="exp", help="Path for saving running related data.")
     parser.add_argument(
         "--doc",
         type=str,
         required=True,
-        help="A string for documentation purpose. "
-        "Will be the name of the log folder.",
+        help="A string for documentation purpose. " "Will be the name of the log folder.",
     )
-    parser.add_argument(
-        "--comment", type=str, default="", help="A string for experiment comment"
-    )
+    parser.add_argument("--comment", type=str, default="", help="A string for experiment comment")
     parser.add_argument(
         "--verbose",
         type=str,
@@ -48,9 +43,7 @@ def parse_args_and_config():
     )
     parser.add_argument("--fid", action="store_true")
     parser.add_argument("--interpolation", action="store_true")
-    parser.add_argument(
-        "--resume_training", action="store_true", help="Whether to resume training"
-    )
+    parser.add_argument("--resume_training", action="store_true", help="Whether to resume training")
     parser.add_argument(
         "-i",
         "--image_folder",
@@ -76,9 +69,7 @@ def parse_args_and_config():
         default="uniform",
         help="skip according to (uniform or quadratic)",
     )
-    parser.add_argument(
-        "--timesteps", type=int, default=1000, help="number of steps involved"
-    )
+    parser.add_argument("--timesteps", type=int, default=1000, help="number of steps involved")
     parser.add_argument(
         "--eta",
         type=float,
@@ -131,9 +122,7 @@ def parse_args_and_config():
 
         handler1 = logging.StreamHandler()
         handler2 = logging.FileHandler(os.path.join(args.log_path, "stdout.txt"))
-        formatter = logging.Formatter(
-            "%(levelname)s - %(filename)s - %(asctime)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(levelname)s - %(filename)s - %(asctime)s - %(message)s")
         handler1.setFormatter(formatter)
         handler2.setFormatter(formatter)
         logger = logging.getLogger()
@@ -147,9 +136,7 @@ def parse_args_and_config():
             raise ValueError("level {} not supported".format(args.verbose))
 
         handler1 = logging.StreamHandler()
-        formatter = logging.Formatter(
-            "%(levelname)s - %(filename)s - %(asctime)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(levelname)s - %(filename)s - %(asctime)s - %(message)s")
         handler1.setFormatter(formatter)
         logger = logging.getLogger()
         logger.addHandler(handler1)
@@ -157,9 +144,7 @@ def parse_args_and_config():
 
         if args.sample:
             os.makedirs(os.path.join(args.exp, "image_samples"), exist_ok=True)
-            args.image_folder = os.path.join(
-                args.exp, "image_samples", args.image_folder
-            )
+            args.image_folder = os.path.join(args.exp, "image_samples", args.image_folder)
             if not os.path.exists(args.image_folder):
                 os.makedirs(args.image_folder)
             else:
@@ -168,9 +153,7 @@ def parse_args_and_config():
                     if args.ni:
                         overwrite = True
                     else:
-                        response = input(
-                            f"Image folder {args.image_folder} already exists. Overwrite? (Y/N)"
-                        )
+                        response = input(f"Image folder {args.image_folder} already exists. Overwrite? (Y/N)")
                         if response.upper() == "Y":
                             overwrite = True
 
@@ -210,9 +193,9 @@ def dict2namespace(config):
 
 def main():
     args, config = parse_args_and_config()
-    logging.info("Writing log file to {}".format(args.log_path))
-    logging.info("Exp instance id = {}".format(os.getpid()))
-    logging.info("Exp comment = {}".format(args.comment))
+    logging.info(f"Writing log file to {args.log_path}")
+    logging.info(f"Exp instance id = {os.getpid()}")
+    logging.info(f"Exp comment = {args.comment}")
 
     try:
         runner = Diffusion(args, config)

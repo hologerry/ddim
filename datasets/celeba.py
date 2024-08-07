@@ -1,8 +1,11 @@
-import torch
 import os
+
 import PIL
+import torch
+
+from torchvision.datasets.utils import check_integrity, download_file_from_google_drive
+
 from .vision import VisionDataset
-from torchvision.datasets.utils import download_file_from_google_drive, check_integrity
 
 
 class CelebA(VisionDataset):
@@ -47,12 +50,9 @@ class CelebA(VisionDataset):
         ("0B7EVK8r0v71pY0NSMzRuSXJEVkk", "d32c9cbf5e040fd4025c592c306e6668", "list_eval_partition.txt"),
     ]
 
-    def __init__(self, root,
-                 split="train",
-                 target_type="attr",
-                 transform=None, target_transform=None,
-                 download=False):
+    def __init__(self, root, split="train", target_type="attr", transform=None, target_transform=None, download=False):
         import pandas
+
         super(CelebA, self).__init__(root)
         self.split = split
         if isinstance(target_type, list):
@@ -66,8 +66,7 @@ class CelebA(VisionDataset):
             self.download()
 
         if not self._check_integrity():
-            raise RuntimeError('Dataset not found or corrupted.' +
-                               ' You can use download=True to download it')
+            raise RuntimeError("Dataset not found or corrupted." + " You can use download=True to download it")
 
         self.transform = transform
         self.target_transform = target_transform
@@ -79,25 +78,24 @@ class CelebA(VisionDataset):
         elif split.lower() == "test":
             split = 2
         else:
-            raise ValueError('Wrong split entered! Please use split="train" '
-                             'or split="valid" or split="test"')
+            raise ValueError('Wrong split entered! Please use split="train" ' 'or split="valid" or split="test"')
 
         with open(os.path.join(self.root, self.base_folder, "list_eval_partition.txt"), "r") as f:
-            splits = pandas.read_csv(f, sep='\s+', header=None, index_col=0)
+            splits = pandas.read_csv(f, sep="\s+", header=None, index_col=0)
 
         with open(os.path.join(self.root, self.base_folder, "identity_CelebA.txt"), "r") as f:
-            self.identity = pandas.read_csv(f, sep='\s+', header=None, index_col=0)
+            self.identity = pandas.read_csv(f, sep="\s+", header=None, index_col=0)
 
         with open(os.path.join(self.root, self.base_folder, "list_bbox_celeba.txt"), "r") as f:
-            self.bbox = pandas.read_csv(f, sep='\s+', header=1, index_col=0)
+            self.bbox = pandas.read_csv(f, sep="\s+", header=1, index_col=0)
 
         with open(os.path.join(self.root, self.base_folder, "list_landmarks_align_celeba.txt"), "r") as f:
-            self.landmarks_align = pandas.read_csv(f, sep='\s+', header=1)
+            self.landmarks_align = pandas.read_csv(f, sep="\s+", header=1)
 
         with open(os.path.join(self.root, self.base_folder, "list_attr_celeba.txt"), "r") as f:
-            self.attr = pandas.read_csv(f, sep='\s+', header=1)
+            self.attr = pandas.read_csv(f, sep="\s+", header=1)
 
-        mask = (splits[1] == split)
+        mask = splits[1] == split
         self.filename = splits[mask].index.values
         self.identity = torch.as_tensor(self.identity[mask].values)
         self.bbox = torch.as_tensor(self.bbox[mask].values)
@@ -106,7 +104,7 @@ class CelebA(VisionDataset):
         self.attr = (self.attr + 1) // 2  # map from {-1, 1} to {0, 1}
 
     def _check_integrity(self):
-        for (_, md5, filename) in self.file_list:
+        for _, md5, filename in self.file_list:
             fpath = os.path.join(self.root, self.base_folder, filename)
             _, ext = os.path.splitext(filename)
             # Allow original archive to be deleted (zip and 7z)
@@ -121,10 +119,10 @@ class CelebA(VisionDataset):
         import zipfile
 
         if self._check_integrity():
-            print('Files already downloaded and verified')
+            print("Files already downloaded and verified")
             return
 
-        for (file_id, md5, filename) in self.file_list:
+        for file_id, md5, filename in self.file_list:
             download_file_from_google_drive(file_id, os.path.join(self.root, self.base_folder), filename, md5)
 
         with zipfile.ZipFile(os.path.join(self.root, self.base_folder, "img_align_celeba.zip"), "r") as f:
@@ -144,7 +142,7 @@ class CelebA(VisionDataset):
             elif t == "landmarks":
                 target.append(self.landmarks_align[index, :])
             else:
-                raise ValueError("Target type \"{}\" is not recognized.".format(t))
+                raise ValueError('Target type "{}" is not recognized.'.format(t))
         target = tuple(target) if len(target) > 1 else target[0]
 
         if self.transform is not None:
@@ -160,4 +158,4 @@ class CelebA(VisionDataset):
 
     def extra_repr(self):
         lines = ["Target type: {target_type}", "Split: {split}"]
-        return '\n'.join(lines).format(**self.__dict__)
+        return "\n".join(lines).format(**self.__dict__)
