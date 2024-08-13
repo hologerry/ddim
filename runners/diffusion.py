@@ -77,8 +77,7 @@ class Diffusion(object):
         posterior_variance = betas * (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod)
         if self.model_var_type == "fixedlarge":
             self.logvar = betas.log()
-            # torch.cat(
-            # [posterior_variance[1:2], betas[1:]], dim=0).log()
+            # torch.cat([posterior_variance[1:2], betas[1:]], dim=0).log()
         elif self.model_var_type == "fixedsmall":
             self.logvar = posterior_variance.clamp(min=1e-20).log()
 
@@ -114,7 +113,7 @@ class Diffusion(object):
             optimizer.load_state_dict(states[1])
             start_epoch = states[2]
             step = states[3]
-            if self.config.model.ema:
+            if ema_helper is not None:
                 ema_helper.load_state_dict(states[4])
 
         for epoch in range(start_epoch, self.config.training.n_epochs):
@@ -149,7 +148,7 @@ class Diffusion(object):
                     pass
                 optimizer.step()
 
-                if self.config.model.ema:
+                if ema_helper is not None:
                     ema_helper.update(model)
 
                 if step % self.config.training.snapshot_freq == 0 or step == 1:
@@ -159,12 +158,12 @@ class Diffusion(object):
                         epoch,
                         step,
                     ]
-                    if self.config.model.ema:
+                    if ema_helper is not None:
                         states.append(ema_helper.state_dict())
 
                     torch.save(
                         states,
-                        os.path.join(self.args.log_path, "ckpt_{}.pth".format(step)),
+                        os.path.join(self.args.log_path, f"ckpt_{step}.pth"),
                     )
                     torch.save(states, os.path.join(self.args.log_path, "ckpt.pth"))
 
@@ -204,7 +203,7 @@ class Diffusion(object):
             else:
                 raise ValueError
             ckpt = get_ckpt_path(f"ema_{name}")
-            print("Loading checkpoint {}".format(ckpt))
+            print(f"Loading checkpoint {ckpt}")
             model.load_state_dict(torch.load(ckpt, map_location=self.device))
             model.to(self.device)
             model = torch.nn.DataParallel(model)
@@ -220,6 +219,7 @@ class Diffusion(object):
         else:
             raise NotImplementedError("Sample procedeure not defined")
 
+    @torch.no_grad
     def sample_fid(self, model):
         config = self.config
         img_id = len(glob.glob(f"{self.args.image_folder}/*"))
@@ -227,24 +227,24 @@ class Diffusion(object):
         total_n_samples = 50000
         n_rounds = (total_n_samples - img_id) // config.sampling.batch_size
 
-        with torch.no_grad():
-            for _ in tqdm.tqdm(range(n_rounds), desc="Generating image samples for FID evaluation."):
-                n = config.sampling.batch_size
-                x = torch.randn(
-                    n,
-                    config.data.channels,
-                    config.data.image_size,
-                    config.data.image_size,
-                    device=self.device,
-                )
+        for _ in tqdm.tqdm(range(n_rounds), desc="Generating image samples for FID evaluation."):
+            n = config.sampling.batch_size
+            x = torch.randn(
+                n,
+                config.data.channels,
+                config.data.image_size,
+                config.data.image_size,
+                device=self.device,
+            )
 
-                x = self.sample_image(x, model)
-                x = inverse_data_transform(config, x)
+            x = self.sample_image(x, model)
+            x = inverse_data_transform(config, x)
 
-                for i in range(n):
-                    tvu.save_image(x[i], os.path.join(self.args.image_folder, f"{img_id}.png"))
-                    img_id += 1
+            for i in range(n):
+                tvu.save_image(x[i], os.path.join(self.args.image_folder, f"{img_id}.png"))
+                img_id += 1
 
+    @torch.no_grad
     def sample_sequence(self, model):
         config = self.config
 
@@ -257,8 +257,7 @@ class Diffusion(object):
         )
 
         # NOTE: This means that we are producing each predicted x0, not x_{t-1} at timestep t.
-        with torch.no_grad():
-            _, x = self.sample_image(x, model, last=False)
+        _, x = self.sample_image(x, model, last=False)
 
         x = [inverse_data_transform(config, y) for y in x]
 
@@ -266,6 +265,7 @@ class Diffusion(object):
             for j in range(x[i].size(0)):
                 tvu.save_image(x[i][j], os.path.join(self.args.image_folder, f"{j}_{i}.png"))
 
+    @torch.no_grad
     def sample_interpolation(self, model):
         config = self.config
 
@@ -299,14 +299,14 @@ class Diffusion(object):
         xs = []
 
         # Hard coded here, modify to your preferences
-        with torch.no_grad():
-            for i in range(0, x.size(0), 8):
-                xs.append(self.sample_image(x[i : i + 8], model))
+        for i in range(0, x.size(0), 8):
+            xs.append(self.sample_image(x[i : i + 8], model))
         x = inverse_data_transform(config, torch.cat(xs, dim=0))
         for i in range(x.size(0)):
             tvu.save_image(x[i], os.path.join(self.args.image_folder, f"{i}.png"))
 
-    def sample_image(self, x, model, last=True):
+    @torch.no_grad
+    def sample_image(self, x: torch.Tensor, model: torch.nn.Module, last=True):
         try:
             skip = self.args.skip
         except Exception:

@@ -1,8 +1,9 @@
 import os
 
-import PIL
+import pandas
 import torch
 
+from PIL import Image
 from torchvision.datasets.utils import check_integrity, download_file_from_google_drive
 
 from .vision import VisionDataset
@@ -50,8 +51,9 @@ class CelebA(VisionDataset):
         ("0B7EVK8r0v71pY0NSMzRuSXJEVkk", "d32c9cbf5e040fd4025c592c306e6668", "list_eval_partition.txt"),
     ]
 
-    def __init__(self, root, split="train", target_type="attr", transform=None, target_transform=None, download=False):
-        import pandas
+    def __init__(
+        self, root: str, split="train", target_type="attr", transform=None, target_transform=None, download=False
+    ):
 
         super(CelebA, self).__init__(root)
         self.split = split
@@ -81,19 +83,19 @@ class CelebA(VisionDataset):
             raise ValueError('Wrong split entered! Please use split="train" ' 'or split="valid" or split="test"')
 
         with open(os.path.join(self.root, self.base_folder, "list_eval_partition.txt"), "r") as f:
-            splits = pandas.read_csv(f, sep="\s+", header=None, index_col=0)
+            splits = pandas.read_csv(f, sep="\s+", header=None, index_col=0)  # type: ignore
 
         with open(os.path.join(self.root, self.base_folder, "identity_CelebA.txt"), "r") as f:
-            self.identity = pandas.read_csv(f, sep="\s+", header=None, index_col=0)
+            self.identity = pandas.read_csv(f, sep="\s+", header=None, index_col=0)  # type: ignore
 
         with open(os.path.join(self.root, self.base_folder, "list_bbox_celeba.txt"), "r") as f:
-            self.bbox = pandas.read_csv(f, sep="\s+", header=1, index_col=0)
+            self.bbox = pandas.read_csv(f, sep="\s+", header=1, index_col=0)  # type: ignore
 
         with open(os.path.join(self.root, self.base_folder, "list_landmarks_align_celeba.txt"), "r") as f:
-            self.landmarks_align = pandas.read_csv(f, sep="\s+", header=1)
+            self.landmarks_align = pandas.read_csv(f, sep="\s+", header=1)  # type: ignore
 
         with open(os.path.join(self.root, self.base_folder, "list_attr_celeba.txt"), "r") as f:
-            self.attr = pandas.read_csv(f, sep="\s+", header=1)
+            self.attr = pandas.read_csv(f, sep="\s+", header=1)  # type: ignore
 
         mask = splits[1] == split
         self.filename = splits[mask].index.values
@@ -129,7 +131,8 @@ class CelebA(VisionDataset):
             f.extractall(os.path.join(self.root, self.base_folder))
 
     def __getitem__(self, index):
-        X = PIL.Image.open(os.path.join(self.root, self.base_folder, "img_align_celeba", self.filename[index]))
+        img_path = os.path.join(self.root, self.base_folder, "img_align_celeba", str(self.filename[index]))
+        X = Image.open(img_path)
 
         target = []
         for t in self.target_type:
@@ -142,7 +145,7 @@ class CelebA(VisionDataset):
             elif t == "landmarks":
                 target.append(self.landmarks_align[index, :])
             else:
-                raise ValueError('Target type "{}" is not recognized.'.format(t))
+                raise ValueError(f"Target type {t} is not recognized.")
         target = tuple(target) if len(target) > 1 else target[0]
 
         if self.transform is not None:

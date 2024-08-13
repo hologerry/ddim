@@ -25,7 +25,7 @@ class Crop(object):
         return F.crop(img, self.x1, self.y1, self.x2 - self.x1, self.y2 - self.y1)
 
     def __repr__(self):
-        return self.__class__.__name__ + "(x1={}, x2={}, y1={}, y2={})".format(self.x1, self.x2, self.y1, self.y2)
+        return self.__class__.__name__ + f"(x1={self.x1}, x2={self.x2}, y1={self.y1}, y2={self.y2})"
 
 
 def get_dataset(args, config):
@@ -45,13 +45,13 @@ def get_dataset(args, config):
 
     if config.data.dataset == "CIFAR10":
         dataset = CIFAR10(
-            os.path.join(args.exp, "datasets", "cifar10"),
+            os.path.join(args.data_root, "datasets", "cifar10"),
             train=True,
             download=True,
             transform=tran_transform,
         )
         test_dataset = CIFAR10(
-            os.path.join(args.exp, "datasets", "cifar10_test"),
+            os.path.join(args.data_root, "datasets", "cifar10_test"),
             train=False,
             download=True,
             transform=test_transform,
@@ -66,7 +66,7 @@ def get_dataset(args, config):
         y2 = cx + 64
         if config.data.random_flip:
             dataset = CelebA(
-                root=os.path.join(args.exp, "datasets", "celeba"),
+                root=os.path.join(args.data_root, "datasets", "celeba"),
                 split="train",
                 transform=transforms.Compose(
                     [
@@ -80,7 +80,7 @@ def get_dataset(args, config):
             )
         else:
             dataset = CelebA(
-                root=os.path.join(args.exp, "datasets", "celeba"),
+                root=os.path.join(args.data_root, "datasets", "celeba"),
                 split="train",
                 transform=transforms.Compose(
                     [
@@ -93,7 +93,7 @@ def get_dataset(args, config):
             )
 
         test_dataset = CelebA(
-            root=os.path.join(args.exp, "datasets", "celeba"),
+            root=os.path.join(args.data_root, "datasets", "celeba"),
             split="test",
             transform=transforms.Compose(
                 [
@@ -106,11 +106,12 @@ def get_dataset(args, config):
         )
 
     elif config.data.dataset == "LSUN":
-        train_folder = "{}_train".format(config.data.category)
-        val_folder = "{}_val".format(config.data.category)
+        train_folder = f"{config.data.category}_train"
+        val_folder = f"{config.data.category}_val"
+        print(f"args.data_root: {args.data_root}")
         if config.data.random_flip:
             dataset = LSUN(
-                root=os.path.join(args.exp, "datasets", "lsun"),
+                root=args.data_root,
                 classes=[train_folder],
                 transform=transforms.Compose(
                     [
@@ -123,7 +124,7 @@ def get_dataset(args, config):
             )
         else:
             dataset = LSUN(
-                root=os.path.join(args.exp, "datasets", "lsun"),
+                root=args.data_root,
                 classes=[train_folder],
                 transform=transforms.Compose(
                     [
@@ -135,7 +136,7 @@ def get_dataset(args, config):
             )
 
         test_dataset = LSUN(
-            root=os.path.join(args.exp, "datasets", "lsun"),
+            root=args.data_root,
             classes=[val_folder],
             transform=transforms.Compose(
                 [
@@ -149,13 +150,13 @@ def get_dataset(args, config):
     elif config.data.dataset == "FFHQ":
         if config.data.random_flip:
             dataset = FFHQ(
-                path=os.path.join(args.exp, "datasets", "FFHQ"),
+                path=os.path.join(args.data_root, "datasets", "FFHQ"),
                 transform=transforms.Compose([transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor()]),
                 resolution=config.data.image_size,
             )
         else:
             dataset = FFHQ(
-                path=os.path.join(args.exp, "datasets", "FFHQ"),
+                path=os.path.join(args.data_root, "datasets", "FFHQ"),
                 transform=transforms.ToTensor(),
                 resolution=config.data.image_size,
             )
@@ -173,7 +174,7 @@ def get_dataset(args, config):
         test_dataset = Subset(dataset, test_indices)
         dataset = Subset(dataset, train_indices)
     else:
-        dataset, test_dataset = None, None
+        raise ValueError(f"config.data.dataset {config.data.dataset}")
 
     return dataset, test_dataset
 

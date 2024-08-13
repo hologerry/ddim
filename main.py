@@ -21,6 +21,7 @@ def parse_args_and_config():
 
     parser.add_argument("--config", type=str, required=True, help="Path to the config file")
     parser.add_argument("--seed", type=int, default=1234, help="Random seed")
+    parser.add_argument("--data_root", type=str, default="/data", help="Root path datasets.")
     parser.add_argument("--exp", type=str, default="exp", help="Path for saving running related data.")
     parser.add_argument(
         "--doc",
@@ -118,7 +119,7 @@ def parse_args_and_config():
         # setup logger
         level = getattr(logging, args.verbose.upper(), None)
         if not isinstance(level, int):
-            raise ValueError("level {} not supported".format(args.verbose))
+            raise ValueError(f"level {args.verbose} not supported")
 
         handler1 = logging.StreamHandler()
         handler2 = logging.FileHandler(os.path.join(args.log_path, "stdout.txt"))
@@ -133,7 +134,7 @@ def parse_args_and_config():
     else:
         level = getattr(logging, args.verbose.upper(), None)
         if not isinstance(level, int):
-            raise ValueError("level {} not supported".format(args.verbose))
+            raise ValueError(f"level {args.verbose} not supported")
 
         handler1 = logging.StreamHandler()
         formatter = logging.Formatter("%(levelname)s - %(filename)s - %(asctime)s - %(message)s")
@@ -166,7 +167,7 @@ def parse_args_and_config():
 
     # add device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    logging.info("Using device: {}".format(device))
+    logging.info(f"Using device: {device}")
     new_config.device = device
 
     # set random seed

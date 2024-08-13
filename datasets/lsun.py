@@ -5,6 +5,8 @@ import pickle
 
 from collections.abc import Iterable
 
+import lmdb
+
 from PIL import Image
 from torchvision.datasets.utils import iterable_to_str, verify_str_arg
 
@@ -13,9 +15,8 @@ from .vision import VisionDataset
 
 class LSUNClass(VisionDataset):
     def __init__(self, root, transform=None, target_transform=None):
-        import lmdb
 
-        super(LSUNClass, self).__init__(root, transform=transform, target_transform=target_transform)
+        super().__init__(root, transform=transform, target_transform=target_transform)
 
         self.env = lmdb.open(
             root,
@@ -73,8 +74,8 @@ class LSUN(VisionDataset):
             target and transforms it.
     """
 
-    def __init__(self, root, classes="train", transform=None, target_transform=None):
-        super(LSUN, self).__init__(root, transform=transform, target_transform=target_transform)
+    def __init__(self, root, classes: str | list[str] = "train", transform=None, target_transform=None):
+        super().__init__(root, transform=transform, target_transform=target_transform)
         self.classes = self._verify_classes(classes)
 
         # for each class, create an LSUNClassDataset

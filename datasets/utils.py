@@ -3,7 +3,9 @@ import hashlib
 import os
 import os.path
 
-from torch.utils.model_zoo import tqdm
+from urllib import request
+
+from tqdm import tqdm
 
 
 def gen_bar_updater():
@@ -71,12 +73,12 @@ def download_url(url, root, filename=None, md5=None):
     else:
         try:
             print("Downloading " + url + " to " + fpath)
-            urllib.request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
+            request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
         except OSError:
             if url[:5] == "https":
                 url = url.replace("https:", "http:")
                 print("Failed download. Trying https -> http instead." " Downloading " + url + " to " + fpath)
-                urllib.request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
+                request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
 
 
 def list_dir(root, prefix=False):

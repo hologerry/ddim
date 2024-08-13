@@ -1,8 +1,10 @@
 import torch
 
+from torch import nn
+
 
 def noise_estimation_loss(
-    model,
+    model: nn.Module,
     x0: torch.Tensor,
     t: torch.LongTensor,
     e: torch.Tensor,
